@@ -16,7 +16,10 @@ export default function App() {
   const [historico, setHistorico] = useState([]);
 
   const handleChange = (e) => {
-    setDados({ ...dados, [e.target.name]: Number(e.target.value) });
+    setDados({
+      ...dados,
+      [e.target.name]: Number(e.target.value),
+    });
   };
 
   const calcular = () => {
@@ -25,10 +28,10 @@ export default function App() {
     let custoCarroDiario = 0;
 
     if (dados.tipoCarro === "financiado") {
-      custoCarroDiario = dados.parcela / diasMes;
+      custoCarroDiario = diasMes > 0 ? dados.parcela / diasMes : 0;
     } else {
       custoCarroDiario =
-        dados.dadosSemana > 0 ? dados.aluguelSemanal / dados.diasSemana : 0;
+        dados.diasSemana > 0 ? dados.aluguelSemanal / dados.diasSemana : 0;
     }
 
     const custoTotal = dados.gasolina + dados.outros + custoCarroDiario;
@@ -74,14 +77,7 @@ export default function App() {
   };
 
   return (
-    <div
-      style={{
-        backgroundColor: "#000",
-        minHeight: "100vh",
-        padding: 20,
-        fontFamily: "Arial",
-      }}
-    >
+    <div style={{ backgroundColor: "#000", minHeight: "100vh", padding: 20 }}>
       <div
         style={{
           maxWidth: 350,
@@ -91,11 +87,8 @@ export default function App() {
           borderRadius: 12,
         }}
       >
-        <h1 style={{ textAlign: "center", marginBottom: 15 }}>
-          🚖 Calculadora Uber
-        </h1>
+        <h1 style={{ textAlign: "center" }}>🚖 Calculadora Uber</h1>
 
-        {/* DIA */}
         <select
           name="dia"
           onChange={(e) => setDados({ ...dados, dia: e.target.value })}
@@ -111,56 +104,49 @@ export default function App() {
           <option>Domingo</option>
         </select>
 
-        {/* INPUTS */}
         <input
-          placeholder="Faturamento (R$)"
           name="faturamento"
+          placeholder="Faturamento"
           onChange={handleChange}
           style={inputStyle}
         />
-
         <input
-          placeholder="Gasolina (R$)"
           name="gasolina"
+          placeholder="Gasolina"
           onChange={handleChange}
           style={inputStyle}
         />
-
         <input
-          placeholder="KM rodados"
           name="km"
+          placeholder="KM"
           onChange={handleChange}
           style={inputStyle}
         />
-
         <input
-          placeholder="Outros custos (R$)"
           name="outros"
+          placeholder="Outros custos"
           onChange={handleChange}
           style={inputStyle}
         />
-
         <input
-          placeholder="Dias na semana"
           name="diasSemana"
+          placeholder="Dias semana"
           onChange={handleChange}
           style={inputStyle}
         />
 
-        {/* TIPO DE CARRO */}
         <select
-          style={inputStyle}
           onChange={(e) => setDados({ ...dados, tipoCarro: e.target.value })}
+          style={inputStyle}
         >
           <option value="financiado">Financiado</option>
           <option value="alugado">Alugado</option>
         </select>
 
-        {/* CONDIÇÕES */}
         {dados.tipoCarro === "financiado" && (
           <input
-            placeholder="Parcela mensal"
             name="parcela"
+            placeholder="Parcela"
             onChange={handleChange}
             style={inputStyle}
           />
@@ -168,8 +154,8 @@ export default function App() {
 
         {dados.tipoCarro === "alugado" && (
           <input
-            placeholder="Aluguel semanal"
             name="aluguelSemanal"
+            placeholder="Aluguel"
             onChange={handleChange}
             style={inputStyle}
           />
@@ -177,48 +163,23 @@ export default function App() {
 
         <hr />
 
-        {/* RESULTADO */}
-        <h2>📊 Resultado</h2>
-
-        <p>KM: {dados.km}</p>
-        <p>Gastos: R$ {resultado.custoTotal.toFixed(2)}</p>
         <p>Lucro: R$ {resultado.lucro.toFixed(2)}</p>
-        <p>Lucro %: {resultado.percentual.toFixed(1)}%</p>
 
-        {/* BOTÃO */}
         <button
           onClick={salvarDia}
           style={{
             width: "100%",
-            padding: "10px",
-            marginTop: "10px",
-            borderRadius: "8px",
-            border: "none",
-            backgroundColor: "#000",
+            padding: 10,
+            background: "#000",
             color: "#fff",
-            cursor: "pointer",
           }}
         >
           Salvar Dia
         </button>
 
-        {/* HISTÓRICO */}
-        <h3 style={{ marginTop: 20 }}>📅 Histórico</h3>
-
-        {historico.map((item, index) => (
-          <div
-            key={index}
-            style={{
-              background: "#f1f1f1",
-              padding: "8px",
-              borderRadius: "8px",
-              marginBottom: "8px",
-            }}
-          >
-            <strong>{item.dia}</strong>
-            <br />
-            KM: {item.km} | Gasto: R$ {item.gasto.toFixed(2)} | Lucro: R${" "}
-            {item.lucro.toFixed(2)}
+        {historico.map((item, i) => (
+          <div key={i}>
+            {item.dia} - R$ {item.lucro.toFixed(2)}
           </div>
         ))}
       </div>
