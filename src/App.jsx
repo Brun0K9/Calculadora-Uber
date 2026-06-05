@@ -163,7 +163,17 @@ export default function App() {
 
         <hr />
 
+        <h2>📊 Resultado</h2>
+
+        <p>KM rodados: {dados.km}</p>
+
+        <p>Custo carro por dia: R$ {resultado.custoCarroDiario.toFixed(2)}</p>
+
+        <p>Gastos totais: R$ {resultado.custoTotal.toFixed(2)}</p>
+
         <p>Lucro: R$ {resultado.lucro.toFixed(2)}</p>
+
+        <p>Lucro %: {resultado.percentual.toFixed(1)}%</p>
 
         <button
           onClick={salvarDia}
