@@ -1,5 +1,16 @@
 import { useState } from "react";
 
+import { useEffect } from "react";
+
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+} from "recharts";
+
 export default function App() {
   const [dados, setDados] = useState({
     gasolina: 0,
@@ -13,7 +24,14 @@ export default function App() {
     dia: "",
   });
 
-  const [historico, setHistorico] = useState([]);
+  const [historico, setHistorico] = useState(() => {
+    const dadosSalvos = localStorage.getItem("historico");
+    return dadosSalvos ? JSON.parse(dadosSalvos) : [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem("historico", JSON.stringify(historico));
+  }, [historico]);
 
   const handleChange = (e) => {
     setDados({
@@ -64,7 +82,10 @@ export default function App() {
       lucro: resultado.lucro,
     };
 
-    setHistorico([...historico, novo]);
+    const novoHistorico = [...historico, novo];
+
+    setHistorico(novoHistorico);
+    localStorage.setItem("historico", JSON.stringify(novoHistorico));
   };
 
   const inputStyle = {
@@ -75,6 +96,8 @@ export default function App() {
     border: "1px solid #ccc",
     display: "block",
   };
+
+  const totalSemana = historico.reduce((acc, item) => acc + item.lucro, 0);
 
   return (
     <div style={{ backgroundColor: "#000", minHeight: "100vh", padding: 20 }}>
@@ -171,9 +194,24 @@ export default function App() {
 
         <p>Gastos totais: R$ {resultado.custoTotal.toFixed(2)}</p>
 
-        <p>Lucro: R$ {resultado.lucro.toFixed(2)}</p>
+        <p style={{ color: resultado.lucro >= 0 ? "green" : "red" }}>
+          Lucro: R$ {resultado.lucro.toFixed(2)}
+        </p>
+
+        <p>Lucro por KM: R$ {(resultado.lucro / dados.km || 0).toFixed(2)}</p>
 
         <p>Lucro %: {resultado.percentual.toFixed(1)}%</p>
+
+        <h3>Total da semana: R$ {totalSemana.toFixed(2)}</h3>
+
+        <h3>📊 Gráfico de Ganhos</h3>
+
+        <LineChart width={300} height={200} data={historico}>
+          <XAxis dataKey="dia" />
+          <YAxis />
+          <Tooltip />
+          <Line type="monotone" dataKey="lucro" stroke="#000" />
+        </LineChart>
 
         <button
           onClick={salvarDia}
@@ -185,6 +223,18 @@ export default function App() {
           }}
         >
           Salvar Dia
+        </button>
+
+        <button
+          onClick={() => setHistorico([])}
+          style={{
+            width: "100%",
+            padding: 10,
+            background: "#023",
+            color: "#ffa",
+          }}
+        >
+          Limpar Histórico
         </button>
 
         {historico.map((item, i) => (
