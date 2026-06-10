@@ -1,15 +1,5 @@
-import { useState } from "react";
-
-import { useEffect } from "react";
-
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from "recharts";
+import { useState, useEffect } from "react";
+import { LineChart, Line, XAxis, YAxis, Tooltip } from "recharts";
 
 export default function App() {
   const [dados, setDados] = useState({
@@ -24,21 +14,47 @@ export default function App() {
     dia: "",
   });
 
-  const [historico, setHistorico] = useState(() => {
-    const dadosSalvos = localStorage.getItem("historico");
-    return dadosSalvos ? JSON.parse(dadosSalvos) : [];
+  const [semanaAtual, setSemanaAtual] = useState(() => {
+    const s = localStorage.getItem("semanaAtual");
+    return s ? JSON.parse(s) : [];
   });
 
-  useEffect(() => {
-    localStorage.setItem("historico", JSON.stringify(historico));
-  }, [historico]);
+  const [semanas, setSemanas] = useState(() => {
+    const s = localStorage.getItem("semanas");
+    return s ? JSON.parse(s) : [];
+  });
 
-  const handleChange = (e) => {
-    setDados({
-      ...dados,
-      [e.target.name]: Number(e.target.value),
-    });
-  };
+  
+const [meses, setMeses] = useState(() => {
+  const m = localStorage.getItem("meses");
+  return m ? JSON.parse(m) : [];
+});
+
+
+  const [aba, setAba] = useState("dia");
+
+  useEffect(() => {
+    localStorage.setItem("semanaAtual", JSON.stringify(semanaAtual));
+    localStorage.setItem("semanas", JSON.stringify(semanas));
+    localStorage.setItem("meses", JSON.stringify(meses));
+  }, [semanaAtual, semanas, meses]);
+
+
+ 
+const handleChange = (e) => {
+  let valor = Number(e.target.value);
+
+  if (e.target.name === "diasSemana") {
+    if (valor > 7) valor = 7;
+    if (valor < 1) valor = 1;
+  }
+
+  setDados({
+    ...dados,
+    [e.target.name]: valor,
+  });
+};
+
 
   const calcular = () => {
     const diasMes = (dados.diasSemana * 30) / 7;
@@ -46,13 +62,14 @@ export default function App() {
     let custoCarroDiario = 0;
 
     if (dados.tipoCarro === "financiado") {
-      custoCarroDiario = diasMes > 0 ? dados.parcela / diasMes : 0;
+      custoCarroDiario = dados.parcela / (diasMes || 1);
     } else {
       custoCarroDiario =
-        dados.diasSemana > 0 ? dados.aluguelSemanal / dados.diasSemana : 0;
+        dados.aluguelSemanal / (dados.diasSemana || 1);
     }
 
-    const custoTotal = dados.gasolina + dados.outros + custoCarroDiario;
+    const custoTotal =
+      dados.gasolina + dados.outros + custoCarroDiario;
 
     const lucro = dados.faturamento - custoTotal;
 
@@ -69,179 +86,265 @@ export default function App() {
 
   const resultado = calcular();
 
+  // ✅ SALVAR DIA
   const salvarDia = () => {
-    if (!dados.dia) {
-      alert("Selecione o dia da semana");
-      return;
-    }
+    if (!dados.dia) return alert("Selecione o dia");
 
     const novo = {
       dia: dados.dia,
       km: dados.km,
       gasto: resultado.custoTotal,
+      faturamento: dados.faturamento,
       lucro: resultado.lucro,
     };
 
-    const novoHistorico = [...historico, novo];
+    const novaSemana = [...semanaAtual, novo];
+    setSemanaAtual(novaSemana);
 
-    setHistorico(novoHistorico);
-    localStorage.setItem("historico", JSON.stringify(novoHistorico));
+    if (novaSemana.length >= dados.diasSemana) {
+      finalizarSemana(novaSemana);
+    }
+  };
+
+  const finalizarSemana = (semana = semanaAtual) => {
+    if (!semana.length) return;
+  
+    const novasSemanas = [...semanas, semana];
+  
+    setSemanas(novasSemanas);
+    setSemanaAtual([]);
+  
+    // ✅ FECHAR MÊS AUTOMÁTICO (4 semanas)
+    if (novasSemanas.length >= 4) {
+      const novoMes = novasSemanas.slice(-4);
+      setMeses([...meses, novoMes]);
+  
+      setSemanas([]); // limpa semanas depois de criar mês
+    }
+  };
+
+  const limparHistorico = () => {
+    if (window.confirm("Apagar tudo?")) {
+      setSemanaAtual([]);
+      setSemanas([]);
+      setMeses([]);
+      localStorage.clear();
+    }
   };
 
   const inputStyle = {
     width: "95%",
-    padding: "8px",
-    margin: "0 auto 8px auto",
-    borderRadius: "6px",
+    padding: "10px",
+    marginBottom: "8px",
+    borderRadius: "8px",
     border: "1px solid #ccc",
     display: "block",
   };
 
-  const totalSemana = historico.reduce((acc, item) => acc + item.lucro, 0);
+  const botaoStyle = {
+    width: "100%",
+    padding: "12px",
+    marginTop: "10px",
+    borderRadius: "8px",
+    border: "none",
+    backgroundColor: "#000",
+    color: "#fff",
+    cursor: "pointer",
+  };
+
+  // ✅ CALCULOS
+  const faturamentoSemana = semanaAtual.reduce((a, b) => a + b.faturamento, 0);
+  const lucroSemana = semanaAtual.reduce((a, b) => a + b.lucro, 0);
+  const kmSemana = semanaAtual.reduce((a, b) => a + b.km, 0);
+
+  const semanasMes = semanas.slice(-4);
+
+  const faturamentoMes = semanasMes.flat().reduce((a, b) => a + b.faturamento, 0);
+  const lucroMes = semanasMes.flat().reduce((a, b) => a + b.lucro, 0);
+
+
+  const abaStyle = (ativa) => ({
+    padding: "6px 12px",
+    borderRadius: "20px",
+    border: "1px solid #ccc",
+    cursor: "pointer",
+    fontSize: "14px",
+    backgroundColor: ativa ? "#000" : "#eee",
+    color: ativa ? "#fff" : "#000",
+    transition: "0.2s",
+  });
+  
 
   return (
     <div style={{ backgroundColor: "#000", minHeight: "100vh", padding: 20 }}>
-      <div
-        style={{
-          maxWidth: 350,
-          margin: "0 auto",
-          backgroundColor: "#fff",
-          padding: 16,
-          borderRadius: 12,
-        }}
-      >
-        <h1 style={{ textAlign: "center" }}>🚖 Calculadora Uber</h1>
+      <div style={{
+        maxWidth: 350,
+        margin: "0 auto",
+        backgroundColor: "#fff",
+        padding: 16,
+        borderRadius: 12
+      }}>
 
-        <select
-          name="dia"
-          onChange={(e) => setDados({ ...dados, dia: e.target.value })}
-          style={inputStyle}
-        >
-          <option value="">Selecione o dia</option>
-          <option>Segunda</option>
-          <option>Terça</option>
-          <option>Quarta</option>
-          <option>Quinta</option>
-          <option>Sexta</option>
-          <option>Sábado</option>
-          <option>Domingo</option>
-        </select>
+        <h2 style={{ textAlign: "center" }}>🚖 Calculadora Motorista 💰</h2>
 
-        <input
-          name="faturamento"
-          placeholder="Faturamento"
-          onChange={handleChange}
-          style={inputStyle}
-        />
-        <input
-          name="gasolina"
-          placeholder="Gasolina"
-          onChange={handleChange}
-          style={inputStyle}
-        />
-        <input
-          name="km"
-          placeholder="KM"
-          onChange={handleChange}
-          style={inputStyle}
-        />
-        <input
-          name="outros"
-          placeholder="Outros custos"
-          onChange={handleChange}
-          style={inputStyle}
-        />
-        <input
-          name="diasSemana"
-          placeholder="Dias semana"
-          onChange={handleChange}
-          style={inputStyle}
-        />
+        {/* ABAS */}
+       
+<div style={{ display: "flex", justifyContent: "space-between", marginBottom: 15 }}>
+  <button style={abaStyle(aba === "dia")}   
+onMouseEnter={(e) => ! (aba === "dia") && (e.target.style.background="#ddd")}
+onMouseLeave={(e) => ! (aba === "dia") && (e.target.style.background="#eee")}
+onClick={() => setAba("dia")}>
+    Dia
+  </button>
 
-        <select
-          onChange={(e) => setDados({ ...dados, tipoCarro: e.target.value })}
-          style={inputStyle}
-        >
-          <option value="financiado">Financiado</option>
-          <option value="alugado">Alugado</option>
-        </select>
+  <button style={abaStyle(aba === "semana")}
+  onMouseEnter={(e) => ! (aba === "semana") && (e.target.style.background="#ddd")}
+  onMouseLeave={(e) => ! (aba === "semana") && (e.target.style.background="#eee")}
+  onClick={() => setAba("semana")}>
+    Semana
+  </button>
 
-        {dados.tipoCarro === "financiado" && (
-          <input
-            name="parcela"
-            placeholder="Parcela"
-            onChange={handleChange}
-            style={inputStyle}
-          />
+  <button style={abaStyle(aba === "mes")} 
+  onMouseEnter={(e) => ! (aba === "mes") && (e.target.style.background="#ddd")}
+  onMouseLeave={(e) => ! (aba === "mes") && (e.target.style.background="#eee")}
+  onClick={() => setAba("mes")}>
+    Mês
+  </button>
+</div>
+
+
+        {/* DIA */}
+        {aba === "dia" && (
+          <>
+            <select onChange={(e)=>setDados({...dados,dia:e.target.value})} style={inputStyle}>
+              <option value="">Selecione o dia</option>
+              <option>Segunda</option>
+              <option>Terça</option>
+              <option>Quarta</option>
+              <option>Quinta</option>
+              <option>Sexta</option>
+              <option>Sábado</option>
+              <option>Domingo</option>
+            </select>
+
+            <input name="faturamento" placeholder="Faturamento" onChange={handleChange} style={inputStyle}/>
+            <input name="gasolina" placeholder="Gasolina" onChange={handleChange} style={inputStyle}/>
+            <input name="km" placeholder="KM" onChange={handleChange} style={inputStyle}/>
+            <input name="outros" placeholder="Outros custos" onChange={handleChange} style={inputStyle}/>
+            
+
+            <label>Dias trabalhados na semana</label>
+<input
+  name="diasSemana"
+  type="number"
+  placeholder="Ex: 5"
+  min="1"
+  max="7"
+  onChange={handleChange}
+  style={inputStyle}
+/>
+
+
+
+
+            <select onChange={(e)=>setDados({...dados,tipoCarro:e.target.value})} style={inputStyle}>
+              <option value="financiado">Financiado</option>
+              <option value="alugado">Alugado</option>
+            </select>
+
+            {dados.tipoCarro === "financiado" && (
+              <input name="parcela" placeholder="Parcela" onChange={handleChange} style={inputStyle}/>
+            )}
+
+            {dados.tipoCarro === "alugado" && (
+              <input name="aluguelSemanal" placeholder="Aluguel" onChange={handleChange} style={inputStyle}/>
+            )}
+
+            <h2>📊 Resultado</h2>
+
+            <p>💰 Faturamento: R$ {dados.faturamento.toFixed(2)}</p>
+            <p>📏 KM: {dados.km}</p>
+            <p>🚗 Custo carro por dia: R$ {resultado.custoCarroDiario.toFixed(2)}</p>
+            <p>💸 Gastos: R$ {resultado.custoTotal.toFixed(2)}</p>
+
+            <p style={{ color: resultado.lucro >= 0 ? "green" : "red" }}>
+              ✅ Lucro: R$ {resultado.lucro.toFixed(2)}
+            </p>
+
+            <p>📊 Lucro/KM: R$ {(resultado.lucro/(dados.km||1)).toFixed(2)}</p>
+            <p>📈 %: {resultado.percentual.toFixed(1)}%</p>
+
+            <button onClick={salvarDia} style={botaoStyle}>Salvar Dia</button>
+
+            <button onClick={finalizarSemana} style={botaoStyle}>
+              ✅ Fechar Semana
+            </button>
+
+            <h3>📅 Semana Atual</h3>
+            {semanaAtual.map((d,i)=>(
+              <div key={i}>{d.dia} | R${d.lucro.toFixed(2)}</div>
+            ))}
+          </>
         )}
 
-        {dados.tipoCarro === "alugado" && (
-          <input
-            name="aluguelSemanal"
-            placeholder="Aluguel"
-            onChange={handleChange}
-            style={inputStyle}
-          />
+        {/* SEMANA */}
+        {aba === "semana" && (
+          <>
+            <h2>📊 Semana Atual</h2>
+
+            <p>💰 Faturamento: R$ {faturamentoSemana.toFixed(2)}</p>
+            <p>✅ {lucroSemana.toFixed(2)}</p>
+            <p>📏 KM: {kmSemana}</p>
+
+            <LineChart width={300} height={200} data={semanaAtual}>
+              <XAxis dataKey="dia" />
+              <YAxis />
+              <Tooltip />
+              <Line type="monotone" dataKey="lucro" stroke="#000" />
+            </LineChart>
+
+            <h3>📚 Histórico</h3>
+           {semanas.map((s,i)=>(
+            <div key={i}>
+              Semana {i+1} | 
+              💰 R$ {s.reduce((a,b)=>a+b.faturamento,0).toFixed(2)} | 
+              ✅ R$ {s.reduce((a,b)=>a+b.lucro,0).toFixed(2)}
+            </div>
+          ))}
+
+          </>
         )}
 
-        <hr />
+        {/* MES */}
+        {aba === "mes" && (
+          <>
+            <h2>📆 Mês</h2>
 
-        <h2>📊 Resultado</h2>
+            <p>💰 Faturamento: R$ {faturamentoMes.toFixed(2)}</p>
+            <p>✅ Lucro: R$ {lucroMes.toFixed(2)}</p>
+            <p>📅 Semanas: {semanasMes.length}</p>
+          
+          
+          <h3>📚 Histórico Mensal</h3>
+            
+          {meses.map((mes,i)=>(
+            <div key={i}>
+              Mês {i+1} | 
+              💰 R$ {mes.flat().reduce((a,b)=>a+b.faturamento,0).toFixed(2)} | 
+              ✅ R$ {mes.flat().reduce((a,b)=>a+b.lucro,0).toFixed(2)}
+            </div>
+          ))}
 
-        <p>KM rodados: {dados.km}</p>
+          </>
+          
+        )}
 
-        <p>Custo carro por dia: R$ {resultado.custoCarroDiario.toFixed(2)}</p>
-
-        <p>Gastos totais: R$ {resultado.custoTotal.toFixed(2)}</p>
-
-        <p style={{ color: resultado.lucro >= 0 ? "green" : "red" }}>
-          Lucro: R$ {resultado.lucro.toFixed(2)}
-        </p>
-
-        <p>Lucro por KM: R$ {(resultado.lucro / dados.km || 0).toFixed(2)}</p>
-
-        <p>Lucro %: {resultado.percentual.toFixed(1)}%</p>
-
-        <h3>Total da semana: R$ {totalSemana.toFixed(2)}</h3>
-
-        <h3>📊 Gráfico de Ganhos</h3>
-
-        <LineChart width={300} height={200} data={historico}>
-          <XAxis dataKey="dia" />
-          <YAxis />
-          <Tooltip />
-          <Line type="monotone" dataKey="lucro" stroke="#000" />
-        </LineChart>
-
-        <button
-          onClick={salvarDia}
-          style={{
-            width: "100%",
-            padding: 10,
-            background: "#000",
-            color: "#fff",
-          }}
-        >
-          Salvar Dia
+        <button onClick={limparHistorico} style={{
+          ...botaoStyle,
+          background:"#c0392b"
+        }}>
+          🗑️ Limpar Tudo
         </button>
-
-        <button
-          onClick={() => setHistorico([])}
-          style={{
-            width: "100%",
-            padding: 10,
-            background: "#023",
-            color: "#ffa",
-          }}
-        >
-          Limpar Histórico
-        </button>
-
-        {historico.map((item, i) => (
-          <div key={i}>
-            {item.dia} - R$ {item.lucro.toFixed(2)}
-          </div>
-        ))}
       </div>
     </div>
   );
